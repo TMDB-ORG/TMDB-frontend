@@ -26,7 +26,20 @@ export const useMovieStore = defineStore('movie', () => {
   const setLoading = (value: boolean) => {
   state.isLoading = value;
 };
-
+const listBadMovies = async (genreId: number) => {
+  state.isLoading = true;
+  const response = await api.get('discover/movie', {
+    params: {
+      with_genres: genreId,
+      language: 'pt-BR',
+      'vote_average.lte': 3.0,
+      'sort_by': 'vote_average.asc',
+      'vote_count.gte': 50
+    },
+  });
+  movies.value = response.data.results;
+  state.isLoading = false;
+};
 const isLoading = computed(() => state.isLoading);
   const movies = ref<Movie[]>([]);
 
@@ -46,5 +59,5 @@ const isLoading = computed(() => state.isLoading);
 };
   
    const formatDate = (date: string | number | Date) => new Date(date).toLocaleDateString('pt-BR');
-  return { currentMovie, getMovieDetail, movies, listMovies, formatDate, isLoading, setLoading };
+  return { currentMovie, getMovieDetail, movies, listMovies, formatDate, isLoading, setLoading, listBadMovies};
 });
