@@ -1,19 +1,19 @@
 <template>
   <section class="bad-movies">
-    <h2>Filmes em baixa</h2>
+    <h2>Drama para rir</h2>
     <div class="carousel-container">
       <button class="carousel-btn carousel-btn-prev" @click="scrollPrev">
         &#8249;
       </button>
-      
+
       <div class="carousel" ref="carouselRef">
         <div
           v-for="movie in movies"
           :key="movie.id"
           class="carousel-item"
         >
-          <img 
-            :src="`https://image.tmdb.org/t/p/w500${movie.poster_path}`" 
+          <img
+            :src="`https://image.tmdb.org/t/p/w500${movie.poster_path}`"
             :alt="movie.title"
             class="movie-banner"
           />
@@ -23,28 +23,24 @@
           </div>
         </div>
       </div>
-
       <button class="carousel-btn carousel-btn-next" @click="scrollNext">
         &#8250;
       </button>
     </div>
   </section>
- 
 </template>
 
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue';
 import { useMovieStore } from '@/stores/movie';
 import type { Movie } from '@/types/moviesTypes';
-
 const movieStore = useMovieStore();
 const carouselRef = ref<HTMLElement | null>(null);
 
 const movies = ref<Movie[]>([]);
 
 const loadMovies = async () => {
-  movies.value = await movieStore.listBadMovies();
-  console.log(movies.value);
+  movies.value = await movieStore.listBadMovies(18);
 };
 
 const scrollNext = () => {
