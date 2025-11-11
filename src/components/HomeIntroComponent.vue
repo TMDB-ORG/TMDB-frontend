@@ -1,16 +1,20 @@
+import { RouterLink } from 'vue-router';
 <template>
   <main>
     <section class="first">
       <div class="content">
           <img src="/public/images/Logo.png" class="slide-in">
           <h1 class="slide-in">Os melhores piores filmes estão aqui</h1>
-          <button class="slide-in">Criar conta</button>
+          <RouterLink to="/cadastro">
+            <button class="slide-in">Criar conta</button>
+          </RouterLink>
       </div>
     </section>
   </main>
 </template>
 
 <script setup>
+    
 </script>
 
 <style scoped>
@@ -58,43 +62,46 @@ h1 {
   margin-bottom: 20px;
 }
 
-button {
-  margin-top: 20px;
-  padding: 12px 30px;
-  font-size: 1.1rem;
-  color: white;
-  background-color: #02050B;
+button{  background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%);
+  color: #ffffff;
+  font-weight: 600;
   border: none;
   border-radius: 8px;
+  padding: 1rem;
+  width: 50%;
+  font-size: 1rem;
   cursor: pointer;
-  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
-  position: relative;
-  overflow: hidden;
   transition: all 0.3s ease;
-  z-index: 1;
-}
+  margin-top: 0.5rem;
+  position: relative;
+  overflow: hidden;}
 
-button::before {
+  button::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 0;
-  width: 0%;
-  height: 100%;
-  background: linear-gradient(45deg, #000000, #D2A63C);
-  transition: width 0.4s ease;
-  z-index: -1;
-}
-
-button:hover::before {
+  left: -100%;
   width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s ease;
 }
 
 button:hover {
-  color: white;
-  transform: scale(1.1);
-  box-shadow: 4px 4px 12px rgba(0, 0, 0, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4);
+  transform: scale(1.03);
 }
+
+button:hover::before {
+  left: 100%;
+}
+
+button:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
 
 
 section.first::after {

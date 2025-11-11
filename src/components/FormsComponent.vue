@@ -1,48 +1,96 @@
 <template>
   <div class="form-wrapper">
-    <form @submit.prevent="submitForm" class="form-container" autocomplete="off">
+    <form class="form-container" autocomplete="off" @submit.prevent="submitForm(formData)">
       <h2>Cadastro</h2>
+
       <div class="form-group">
-        <label for="name">Nome</label>
-        <input type="text" id="name" v-model="formData.name" />
+        <label for="username">Nome de Usuário</label>
+        <input type="text" id="username" v-model="formData.username" />
       </div>
+
       <div class="form-group">
         <label for="email">Email</label>
         <input type="email" id="email" v-model="formData.email" />
       </div>
+
       <div class="form-group">
         <label for="password">Senha</label>
         <input type="password" id="password" v-model="formData.password" />
       </div>
+
       <div class="form-group">
         <label for="confirmPassword">Confirmar Senha</label>
         <input type="password" id="confirmPassword" v-model="formData.confirmPassword" />
       </div>
+      
       <button type="submit">Cadastrar</button>
     </form>
+  </div>
+
+  <div v-if="showSuccessPopup" class="success-popup">
+    <div class="popup-content">
+      <span class="popup-icon">✓</span>
+      <p>Usuário criado com sucesso!</p>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import router from '@/router';
 import { ref } from 'vue';
 
 interface FormData {
-  name: string;
+  username: string;
   email: string;
   password: string;
   confirmPassword: string;
 }
 
 const formData = ref<FormData>({
-  name: '',
+  username: '',
   email: '',
   password: '',
   confirmPassword: ''
 });
 
-const submitForm = () => {
-  console.log(formData.value);
+const showSuccessPopup = ref(false);
+
+const submitForm = (data: FormData) => {
+  console.log(data);
+  if (data.password !== data.confirmPassword) {
+    alert("As senhas não coincidem!");
+    return;
+  }
+  fetchDataRegister(data);
 };
+
+const fetchDataRegister = async (data: FormData) => {
+  try {
+    const response = await fetch("http://localhost:8080/users/create", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    const result = await response.json();
+    console.log(result + "Isso foi o retorno do java");
+    
+    if (result.success) {
+
+      showSuccessPopup.value = true;
+      setTimeout(() => {
+        router.push('/');
+      }, 2000);
+    } else {
+      alert("Erro ao cadastrar usuário: " + result.message);
+    }
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    alert("Erro de conexão. Tente novamente.");
+  }
+}
 </script>
 
 <style scoped>
@@ -191,8 +239,60 @@ input:-webkit-autofill:focus {
   transition: background-color 5000s ease-in-out 0s;
 }
 
-
 .form-group:focus-within label {
   color: #d4af37;
+}
+
+.success-popup {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+  z-index: 15;
+  animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 1.7s forwards;
+}
+
+.popup-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.popup-icon {
+  background: white;
+  color: #10b981;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.9rem;
+  z-index: 10;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 </style>
