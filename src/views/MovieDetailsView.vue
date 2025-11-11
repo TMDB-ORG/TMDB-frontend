@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { defineProps, onMounted, computed } from 'vue';
+import { defineProps, onMounted, computed, ref } from 'vue';
 import { useMovieStore } from '@/stores/movie';
+import { useUserStore } from '@/stores/user';
+import { useCommentsStore } from '@/stores/comments';
+
 const movieStore = useMovieStore();
+const userStore = useUserStore();
+const commentsStore = useCommentsStore();
 
 const props = defineProps({
   movieId: {
@@ -12,7 +17,6 @@ const props = defineProps({
 
 const movie = computed(() => movieStore.currentMovie as any);
 
-// helpers para extrair editores e autores (writers)
 const editors = computed(() => {
   return (movie.value?.credits?.crew || []).filter((c: any) =>
     String(c.job || '').toLowerCase().includes('edit')
@@ -33,15 +37,50 @@ const getInitials = (name = '') => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
+const comments = ref<any[]>([]);
+const newComment = ref<string>('');
+const newName = ref<string>('');
+const loadComments = () => {
+  comments.value = commentsStore.listForMovie(props.movieId);
+  // prefill name/email from user store if available
+  if (userStore.auth?.name) newName.value = userStore.auth.name;
+};
+
+const submitComment = () => {
+  const author = newName.value || userStore.auth?.name || 'Anon';
+  const email = userStore.auth?.email || null;
+  const added = commentsStore.addComment(props.movieId, author, newComment.value, email);
+  if (added) {
+    newComment.value = '';
+    loadComments();
+  }
+};
+
+const removeComment = (id: string) => {
+  commentsStore.deleteComment(props.movieId, id);
+  loadComments();
+};
+
 onMounted(async () => {
   await movieStore.getMovieDetail(props.movieId);
+  loadComments();
 });
+
+const toggleOdiar = () => {
+  userStore.toggleOdiar(props.movieId);
+};
+
+const isOdiado = computed(() => userStore.isOdiado(props.movieId));
+
+const tmdbStars = (voteAverage: number | undefined) => {
+  if (!voteAverage && voteAverage !== 0) return 0;
+  return Math.round((voteAverage / 10) * 5);
+};
 </script>
 
 <template>
   <div class="movie-page">
     <div v-if="movie && movie.id">
-      <!-- Hero com backdrop e degradê (grande) -->
       <section
         class="hero"
         :style="{
@@ -62,17 +101,43 @@ onMounted(async () => {
           <div class="hero-details">
             <h1>{{ movie.title }}</h1>
             <p class="tagline" v-if="movie.tagline">“{{ movie.tagline }}”</p>
+
             <div class="meta">
               <span v-if="movie.release_date">Lançamento: {{ movie.release_date }}</span>
               <span v-if="movie.runtime">• {{ movie.runtime }} min</span>
-              <span v-if="movie.vote_average">• Avaliação: {{ movie.vote_average.toFixed(1) }}</span>
             </div>
-            <p class="overview" v-if="movie.overview">{{ movie.overview }}</p>
+
+            <div class="ratings">
+              <div class="rating-card tmdb-rating">
+                <div class="rating-head">
+                  <small>TMDB</small>
+                  <small class="vote-num">({{ movie.vote_average ? movie.vote_average.toFixed(1) : '—' }})</small>
+                </div>
+                <div class="stars">
+                  <template v-for="n in 5" :key="`tmdb-${n}`">
+                    <span class="star" :class="{ filled: n <= tmdbStars(movie.vote_average) }">★</span>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <div class="odiar-wrap">
+              <button
+                class="odiar-btn"
+                :class="{ active: isOdiado }"
+                @click="toggleOdiar"
+                :aria-pressed="isOdiado"
+              >
+                <span class="emoji">💔</span>
+                <span class="label">{{ isOdiado ? 'Odiado' : 'Odiar' }}</span>
+              </button>
+            </div>
+
+            <p class="overview">{{ movie.overview || 'Sem descrição disponível.' }}</p>
           </div>
         </div>
       </section>
 
-      <!-- detalhes principais -->
       <main class="details-wrap">
         <section class="companies" v-if="movie.production_companies && movie.production_companies.length">
           <h2>Produtoras</h2>
@@ -90,39 +155,70 @@ onMounted(async () => {
           </div>
         </section>
 
-        <!-- créditos: editores (sem fotos) e autores -->
-        <section class="credits" v-if="(editors.length && editors.length > 0) || (writers.length && writers.length > 0)">
-          <h2>Equipe (editores e autores)</h2>
+        <!-- grid: left = credits, right = comments -->
+        <div class="details-grid">
+          <section class="credits" v-if="(editors.length && editors.length > 0) || (writers.length && writers.length > 0)">
+            <h2>Equipe (editores e autores)</h2>
 
-          <div class="credits-section" v-if="editors.length && editors.length > 0">
-            <h3>Editores</h3>
-            <div class="people-row">
-              <div class="person" v-for="p in editors" :key="p.id">
-                <!-- não mostrar foto para editores: avatar com iniciais -->
-                <div class="avatar-initials">{{ getInitials(p.name) }}</div>
-                <div class="person-info">
-                  <p class="name">{{ p.name }}</p>
-                  <p class="job">{{ p.job }}</p>
+            <div class="credits-section" v-if="editors.length && editors.length > 0">
+              <h3>Editores</h3>
+              <div class="people-row">
+                <div class="person" v-for="p in editors" :key="p.id">
+                  <div class="avatar-initials">{{ getInitials(p.name) }}</div>
+                  <div class="person-info">
+                    <p class="name">{{ p.name }}</p>
+                    <p class="job">{{ p.job }}</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="credits-section" v-if="writers.length && writers.length > 0">
-            <h3>Autores / Roteiristas</h3>
-            <div class="people-row">
-              <div class="person" v-for="p in writers" :key="p.id">
-                <!-- para autores mostramos foto quando disponível -->
-                <img v-if="p.profile_path" :src="`https://image.tmdb.org/t/p/w185${p.profile_path}`" :alt="p.name" />
-                <div v-else class="avatar-initials small">{{ getInitials(p.name) }}</div>
-                <div class="person-info">
-                  <p class="name">{{ p.name }}</p>
-                  <p class="job">{{ p.job }}</p>
+            <div class="credits-section" v-if="writers.length && writers.length > 0">
+              <h3>Autores / Roteiristas</h3>
+              <div class="people-row">
+                <div class="person" v-for="p in writers" :key="p.id">
+                  <img v-if="p.profile_path" :src="`https://image.tmdb.org/t/p/w185${p.profile_path}`" :alt="p.name" />
+                  <div v-else class="avatar-initials small">{{ getInitials(p.name) }}</div>
+                  <div class="person-info">
+                    <p class="name">{{ p.name }}</p>
+                    <p class="job">{{ p.job }}</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+
+          <aside class="comments-section">
+            <h2>Comentários</h2>
+
+            <form class="comment-form" @submit.prevent="submitComment">
+              <input v-model="newName" placeholder="Seu nome" />
+              <textarea v-model="newComment" rows="4" placeholder="Escreva seu comentário..."></textarea>
+              <div class="form-actions">
+                <button type="submit" class="btn primary">Enviar</button>
+                <small v-if="userStore.isAuthenticated">Logado como {{ userStore.auth.name }}</small>
+              </div>
+            </form>
+
+            <div class="comments-list">
+              <div class="comment" v-for="c in comments" :key="c.id">
+                <div class="comment-head">
+                  <div class="author-initials">{{ (c.author || 'A').slice(0,2).toUpperCase() }}</div>
+                  <div class="meta">
+                    <strong>{{ c.author }}</strong>
+                    <time>{{ new Date(c.createdAt).toLocaleString() }}</time>
+                  </div>
+                </div>
+                <p class="comment-content">{{ c.content }}</p>
+                <div class="comment-actions">
+                  <button class="btn link" @click="removeComment(c.id)">Remover</button>
+                </div>
+              </div>
+
+              <p v-if="!comments || comments.length === 0" class="muted">Seja o primeiro a comentar.</p>
+            </div>
+          </aside>
+        </div>
       </main>
     </div>
 
@@ -159,7 +255,7 @@ onMounted(async () => {
 }
 
 /* fade inferior para evitar "branco" na transição */
-.hero::after {
+.hero::after{
   content: '';
   position: absolute;
   left: 0;
@@ -169,6 +265,7 @@ onMounted(async () => {
   background: linear-gradient(to bottom, rgba(2,5,11,0) 0%, rgba(2,5,11,0.95) 100%);
   pointer-events: none;
 }
+
 
 .hero-content {
   position: relative;
@@ -221,14 +318,86 @@ onMounted(async () => {
   font-size: 1rem;
 }
 
-/* main details */
+/* ratings layout */
+.ratings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  align-items: center;
+  margin: 0.8rem 0;
+}
+
+.rating-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  padding: 0.8rem;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: flex-start;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+}
+
+.rating-head {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+  width: 100%;
+  justify-content: space-between;
+  color: #cfcfcf;
+  font-weight: 700;
+}
+
+.stars {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-left: 0;
+}
+.star {
+  color: rgba(255,255,255,0.25);
+  font-size: 1.6rem;
+  cursor: default;
+  user-select: none;
+  transition: color 0.12s ease, transform 0.12s ease;
+}
+.star.filled {
+  color: #D2A63C;
+}
+
+/* odiar button with broken heart emoji */
+.odiar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: 0;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform 0.12s ease, color 0.12s ease;
+}
+.odiar-btn .emoji { font-size: 1.2rem; transition: transform 0.12s ease; }
+.odiar-btn:hover { transform: translateY(-2px); }
+
+.odiar-btn.active {
+  color: #ff6b6b;
+}
+.odiar-btn.active .emoji { transform: translateY(-2px); }
+
+/* center the button under ratings on wider screens */
+.odiar-wrap {
+  margin-top: 0.6rem;
+}
+
+/* companies and credits */
 .details-wrap {
   max-width: 1200px;
   margin: 2rem auto;
   padding: 0 1rem 3rem 1rem;
 }
 
-/* produtoras */
 .companies {
   margin-bottom: 1.5rem;
 }
@@ -310,30 +479,72 @@ onMounted(async () => {
   font-size: 0.85rem;
 }
 
+/* reviews */
+.reviews { margin-top: 1.5rem; }
+.review { background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+.review-author { display:flex; gap:0.6rem; align-items:center; margin-bottom:0.6rem; }
+.review-author img { width:36px; height:36px; border-radius:50%; object-fit:cover; }
+.review-content { color: #ddd; white-space: pre-wrap; }
+
+/* avatar initials small */
+.avatar-initials.small { height:36px; width:36px; font-size:0.9rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+/* comments */
+.comments-section {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.45);
+}
+.comment-form input,
+.comment-form textarea {
+  width: 100%;
+  padding: 0.6rem;
+  margin-bottom: 0.6rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+  color: #fff;
+  border-radius: 6px;
+  resize: vertical;
+}
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.btn { padding: 0.45rem 0.9rem; border-radius: 6px; cursor: pointer; border: 0; }
+.btn.primary { background: #D2A63C; color: #02050b; font-weight: 700; }
+.btn.link { background: transparent; color: #d6c89a; border: 0; padding: 0.2rem; }
+
+.comments-list { margin-top: 0.8rem; display: flex; flex-direction: column; gap: 0.8rem; }
+.comment { background: rgba(0,0,0,0.25); padding: 0.8rem; border-radius: 8px; }
+.comment-head { display:flex; gap:0.8rem; align-items:center; margin-bottom:0.4rem; }
+.author-initials {
+  width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background: rgba(210,166,60,0.14); color:#fff; font-weight:700;
+}
+.comment-content { color:#ddd; white-space:pre-wrap; margin-bottom:0.4rem; }
+.comment-actions { display:flex; gap:0.6rem; justify-content:flex-end; }
+
 /* responsive */
 @media (max-width: 900px) {
-  .hero {
-    min-height: 55vh;
-    padding: 2rem 1rem;
-  }
-  .hero-content {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
-  .hero-poster {
-    width: 200px;
-    transform: translateY(10px);
-  }
-  .hero-details h1 {
-    font-size: 1.6rem;
-  }
-  .overview {
-    max-width: 100%;
-  }
-  .avatar-initials {
-    height: 120px;
-    font-size: 1.6rem;
-  }
+  .hero { min-height: 55vh; padding: 2rem 1rem; }
+  .hero-content { flex-direction: column; align-items: center; text-align: center; }
+  .hero-poster { width: 200px; transform: translateY(10px); }
+  .hero-details h1 { font-size: 1.6rem; }
+  .overview { max-width: 100%; }
+  .avatar-initials { height: 120px; font-size: 1.6rem; }
+  .people-row { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .ratings { grid-template-columns: 1fr; }
+  .details-grid { grid-template-columns: 1fr; }
+  .comments-section { order: 2; }
 }
 </style>
