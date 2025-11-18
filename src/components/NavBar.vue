@@ -35,7 +35,7 @@ nav {
   justify-content: space-between; 
   flex-wrap: wrap; 
   position: relative;
-  z-index: 100000;
+  z-index: 9;
 }
 nav div {
   display: flex;
