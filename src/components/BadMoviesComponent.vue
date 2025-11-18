@@ -11,6 +11,7 @@
           v-for="movie in movies"
           :key="movie.id"
           class="carousel-item"
+          @click="goToDetails(movie.id)"
         >
           <img 
             :src="`https://image.tmdb.org/t/p/w500${movie.poster_path}`" 
@@ -34,10 +35,12 @@
 
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useMovieStore } from '@/stores/movie';
 import type { Movie } from '@/types/moviesTypes';
 
 const movieStore = useMovieStore();
+const router = useRouter();
 const carouselRef = ref<HTMLElement | null>(null);
 
 const movies = ref<Movie[]>([]);
@@ -45,6 +48,10 @@ const movies = ref<Movie[]>([]);
 const loadMovies = async () => {
   movies.value = await movieStore.listBadMovies();
   console.log(movies.value);
+};
+
+const goToDetails = (id: number) => {
+  router.push({ name: 'MovieDetails', params: { movieId: id } });
 };
 
 const scrollNext = () => {
