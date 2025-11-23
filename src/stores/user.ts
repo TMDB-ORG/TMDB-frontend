@@ -15,10 +15,9 @@ function loadJSON(key: string, fallback: any) {
 }
 
 export const useUserStore = defineStore('user', () => {
-  // ratings: { [movieId]: number (1-5) } (kept for backward compatibility)
+
   const ratings = ref<Record<number, number>>(loadJSON(RATINGS_KEY, {}));
   const odiados = ref<number[]>(loadJSON(ODIADOS_KEY, []));
-  // auth prepared for future backend token (not TMDB auth)
   const auth = ref<{ token?: string; name?: string; email?: string }>(
     loadJSON(AUTH_KEY, {})
   );
@@ -29,7 +28,7 @@ export const useUserStore = defineStore('user', () => {
     localStorage.setItem(AUTH_KEY, JSON.stringify(auth.value));
   };
 
-  // ratings (kept if needed later)
+
   const rateMovie = (movieId: number, rating: number) => {
     if (!movieId) return;
     ratings.value = { ...ratings.value, [movieId]: rating };
@@ -40,7 +39,7 @@ export const useUserStore = defineStore('user', () => {
     return ratings.value[movieId] ?? null;
   };
 
-  // odiar (favorite -> "odiar")
+
   const toggleOdiar = (movieId: number) => {
     const idx = odiados.value.indexOf(movieId);
     if (idx === -1) odiados.value.push(movieId);
@@ -50,7 +49,6 @@ export const useUserStore = defineStore('user', () => {
 
   const isOdiado = (movieId: number) => odiados.value.includes(movieId);
 
-  // auth helpers (prepared to receive token/name/email from backend)
   const setAuth = (payload: { token?: string; name?: string; email?: string }) => {
     auth.value = { ...auth.value, ...payload };
     save();

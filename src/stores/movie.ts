@@ -20,7 +20,7 @@ export const useMovieStore = defineStore('movie', () => {
   const currentMovie = computed(() => state.currentMovie);
 
   const getMovieDetail = async (movieId: number) => {
-    // adiciona credits para poder mostrar elenco/equipe
+   
     const response = await api.get(`movie/${movieId}`, {
       params: {
         append_to_response: 'credits',
@@ -29,8 +29,7 @@ export const useMovieStore = defineStore('movie', () => {
     });
     state.currentMovie = response.data;
   };
-
-  // novo: busca reviews do TMDB
+  
   const listReviews = async (movieId: number) => {
     const response = await api.get(`movie/${movieId}/reviews`, {
       params: {
