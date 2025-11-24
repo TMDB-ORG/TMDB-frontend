@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { defineProps, onMounted, computed, ref } from 'vue';
 import { useMovieStore } from '@/stores/movie';
-import { useUserStore } from '@/stores/user';
 import { useCommentsStore } from '@/stores/comments';
-
-const movieStore = useMovieStore();
-const userStore = useUserStore();
-const commentsStore = useCommentsStore();
-
+import { useUserStore } from '@/stores/user';
+import { useUnlikeStore } from '@/stores/unlike';
+import { useCookieStore } from '@/stores/cookie';
 const props = defineProps({
   movieId: {
     type: Number,
     required: true,
   },
 });
+
+const cookieStore = useCookieStore();
+const movieStore = useMovieStore();
+const commentsStore = useCommentsStore();
+const userStore = useUserStore();
+const unlikeStore = useUnlikeStore();
 
 const movie = computed(() => movieStore.currentMovie as any);
 
@@ -31,56 +34,112 @@ const writers = computed(() => {
 });
 
 const getInitials = (name = '') => {
-  const parts = name.trim().split(' ').filter(Boolean);
+  const parts = name.trim().split(' ').filter(Boolean) as string[];
   if (!parts.length) return '';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  if (parts.length === 1) {
+    const first = parts[0] || '';
+    return first.slice(0, 2).toUpperCase();
+  }
+  const firstChar = (parts[0] || '')[0] || '';
+  const lastChar = (parts[parts.length - 1] || '')[0] || '';
+  return (firstChar + lastChar).toUpperCase();
 };
+
 
 const comments = ref<any[]>([]);
 const newComment = ref<string>('');
-const newName = ref<string>('');
-const loadComments = () => {
-  comments.value = commentsStore.listForMovie(props.movieId);
-  // prefill name/email from user store if available
-  if (userStore.auth?.name) newName.value = userStore.auth.name;
-};
+const isSubmitting = ref(false);
 
-const submitComment = () => {
-  const author = newName.value || userStore.auth?.name || 'Anon';
-  const email = userStore.auth?.email || null;
-  const added = commentsStore.addComment(props.movieId, author, newComment.value, email);
-  if (added) {
-    newComment.value = '';
-    loadComments();
+
+
+const loadComments = async () => {
+  try {
+    const maybe = commentsStore.listForMovie(props.movieId);
+    const resolved = maybe instanceof Promise ? await maybe : maybe;
+    if (Array.isArray(resolved)) {
+      comments.value = resolved;
+    } else {
+      comments.value = commentsStore.commentsByMovie?.[props.movieId] || [];
+    }
+  } catch (e) {
+    comments.value = commentsStore.commentsByMovie?.[props.movieId] || [];
+    console.error('Erro carregando comentários', e);
   }
 };
 
-const removeComment = (id: string) => {
-  commentsStore.deleteComment(props.movieId, id);
-  loadComments();
+const submitComment = async () => {
+
+  if (!newComment.value?.trim()) return;
+  isSubmitting.value = true;
+  
+  try {
+    await commentsStore.addComment(props.movieId, newComment.value);
+    newComment.value = '';
+    await loadComments();
+  } catch (e: any) {
+    console.error('Erro ao enviar comentário', e);
+    
+  
+    if (e.message?.includes('Unauthorized') || e.message?.includes('401')) {
+      alert('Sua sessão expirou. Faça login novamente para comentar.');
+    } else {
+      alert('Erro ao enviar comentário. Tente novamente.');
+    }
+  } finally {
+    isSubmitting.value = false;
+  }
+};
+
+const removeComment = async (id: string | number) => {
+  try {
+    await commentsStore.deleteComment(props.movieId, String(id));
+    await loadComments();
+  } catch (e) {
+    console.error('Erro removendo comentário', e);
+  }
+};
+
+const tmdbStars = (voteAverage: number | undefined) => {
+  if (voteAverage === undefined || voteAverage === null) return 0;
+  return Math.round((voteAverage / 10) * 5);
+};
+
+const isOdiado = computed(() => unlikeStore.isUnliked(props.movieId));
+const dislikeCount = computed(() => unlikeStore.getCount(props.movieId));
+const toggleOdiar = async () => {
+  try {
+    
+    await unlikeStore.toggleUnlike(props.movieId);
+  } catch (e) {
+    console.error('Erro ao alternar unlike', e);
+  }
 };
 
 onMounted(async () => {
   await movieStore.getMovieDetail(props.movieId);
-  loadComments();
+  await loadComments();
+
+  const uid = cookieStore.getUserIdFromCookie();
+  if (uid) {
+    try {
+      const maybe = unlikeStore.fetchStatus(uid, props.movieId);
+      if (maybe instanceof Promise) await maybe;
+    } catch (e) {
+      console.error('Erro ao buscar status de dislike', e);
+    }
+  }
+  
+
+  console.log('Token presente:', !!cookieStore.getCookie('token'));
+  console.log('UserStore auth:', userStore.auth);
+  console.log('UserStore isAuthenticated:', userStore.isAuthenticated);
 });
-
-const toggleOdiar = () => {
-  userStore.toggleOdiar(props.movieId);
-};
-
-const isOdiado = computed(() => userStore.isOdiado(props.movieId));
-
-const tmdbStars = (voteAverage: number | undefined) => {
-  if (!voteAverage && voteAverage !== 0) return 0;
-  return Math.round((voteAverage / 10) * 5);
-};
 </script>
 
 <template>
   <div class="movie-page">
     <div v-if="movie && movie.id">
+    
       <section
         class="hero"
         :style="{
@@ -90,7 +149,6 @@ const tmdbStars = (voteAverage: number | undefined) => {
         }"
       >
         <div class="hero-overlay"></div>
-
         <div class="hero-content">
           <img
             v-if="movie.poster_path"
@@ -100,13 +158,11 @@ const tmdbStars = (voteAverage: number | undefined) => {
           />
           <div class="hero-details">
             <h1>{{ movie.title }}</h1>
-            <p class="tagline" v-if="movie.tagline">“{{ movie.tagline }}”</p>
-
+            <p class="tagline" v-if="movie.tagline">"{{ movie.tagline }}"</p>
             <div class="meta">
               <span v-if="movie.release_date">Lançamento: {{ movie.release_date }}</span>
               <span v-if="movie.runtime">• {{ movie.runtime }} min</span>
             </div>
-
             <div class="ratings">
               <div class="rating-card tmdb-rating">
                 <div class="rating-head">
@@ -120,19 +176,18 @@ const tmdbStars = (voteAverage: number | undefined) => {
                 </div>
               </div>
             </div>
-
-            <div class="odiar-wrap">
-              <button
-                class="odiar-btn"
-                :class="{ active: isOdiado }"
-                @click="toggleOdiar"
-                :aria-pressed="isOdiado"
-              >
-                <span class="emoji">💔</span>
-                <span class="label">{{ isOdiado ? 'Odiado' : 'Odiar' }}</span>
-              </button>
-            </div>
-
+             <div class="odiar-wrap">
+          <button
+            class="odiar-btn"
+            :class="{ active: isOdiado }"
+            @click="toggleOdiar"
+            :aria-pressed="isOdiado"
+          >
+            <span class="emoji">{{ isOdiado ? '💔' : '🤍' }}</span>
+            <span class="label">{{ isOdiado ? 'Odiado' : 'Odiar' }}</span>
+            <span class="count">({{ dislikeCount }})</span>
+          </button>
+        </div>
             <p class="overview">{{ movie.overview || 'Sem descrição disponível.' }}</p>
           </div>
         </div>
@@ -155,11 +210,9 @@ const tmdbStars = (voteAverage: number | undefined) => {
           </div>
         </section>
 
-        <!-- grid: left = credits, right = comments -->
         <div class="details-grid">
           <section class="credits" v-if="(editors.length && editors.length > 0) || (writers.length && writers.length > 0)">
             <h2>Equipe (editores e autores)</h2>
-
             <div class="credits-section" v-if="editors.length && editors.length > 0">
               <h3>Editores</h3>
               <div class="people-row">
@@ -172,7 +225,6 @@ const tmdbStars = (voteAverage: number | undefined) => {
                 </div>
               </div>
             </div>
-
             <div class="credits-section" v-if="writers.length && writers.length > 0">
               <h3>Autores / Roteiristas</h3>
               <div class="people-row">
@@ -190,22 +242,35 @@ const tmdbStars = (voteAverage: number | undefined) => {
 
           <aside class="comments-section">
             <h2>Comentários</h2>
-
             <form class="comment-form" @submit.prevent="submitComment">
-              <input v-model="newName" placeholder="Seu nome" />
-              <textarea v-model="newComment" rows="4" placeholder="Escreva seu comentário..."></textarea>
+              <textarea 
+                v-model="newComment" 
+                rows="4" 
+                placeholder="Escreva seu comentário..."
+                :disabled="!cookieStore.checkAuth() || isSubmitting"
+              ></textarea>
               <div class="form-actions">
-                <button type="submit" class="btn primary">Enviar</button>
-                <small v-if="userStore.isAuthenticated">Logado como {{ userStore.auth.name }}</small>
+                <button 
+                  type="submit" 
+                  class="btn primary"
+                  :disabled="!cookieStore.checkAuth() || !newComment.trim() || isSubmitting"
+                >
+                  {{ isSubmitting ? 'Enviando...' : 'Enviar' }}
+                </button>
+                <small v-if="cookieStore.checkAuth()" class="auth-status">
+                  ✅ Logado e pronto para comentar
+                </small>
+                <small v-else class="warning">
+                  ⚠️ Faça login para comentar
+                </small>
               </div>
             </form>
 
             <div class="comments-list">
               <div class="comment" v-for="c in comments" :key="c.id">
                 <div class="comment-head">
-                  <div class="author-initials">{{ (c.author || 'A').slice(0,2).toUpperCase() }}</div>
                   <div class="meta">
-                    <strong>{{ c.author }}</strong>
+                    <strong>{{ c.username || c.author }}</strong>
                     <time>{{ new Date(c.createdAt).toLocaleString() }}</time>
                   </div>
                 </div>
@@ -227,15 +292,14 @@ const tmdbStars = (voteAverage: number | undefined) => {
     </div>
   </div>
 </template>
-
 <style scoped>
+
 .movie-page {
   background: #02050b;
   color: #fff;
   min-height: 100vh;
 }
 
-/* HERO */
 .hero {
   position: relative;
   background-size: cover;
@@ -246,7 +310,7 @@ const tmdbStars = (voteAverage: number | undefined) => {
   padding: 3rem 1rem;
 }
 
-/* overlay degradê parecido com Home */
+
 .hero-overlay {
   position: absolute;
   inset: 0;
@@ -254,7 +318,6 @@ const tmdbStars = (voteAverage: number | undefined) => {
   pointer-events: none;
 }
 
-/* fade inferior para evitar "branco" na transição */
 .hero::after{
   content: '';
   position: absolute;
@@ -318,7 +381,7 @@ const tmdbStars = (voteAverage: number | undefined) => {
   font-size: 1rem;
 }
 
-/* ratings layout */
+
 .ratings {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -364,7 +427,7 @@ const tmdbStars = (voteAverage: number | undefined) => {
   color: #D2A63C;
 }
 
-/* odiar button with broken heart emoji */
+
 .odiar-btn {
   display: inline-flex;
   align-items: center;
@@ -386,12 +449,11 @@ const tmdbStars = (voteAverage: number | undefined) => {
 }
 .odiar-btn.active .emoji { transform: translateY(-2px); }
 
-/* center the button under ratings on wider screens */
 .odiar-wrap {
   margin-top: 0.6rem;
 }
 
-/* companies and credits */
+
 .details-wrap {
   max-width: 1200px;
   margin: 2rem auto;
@@ -412,7 +474,6 @@ const tmdbStars = (voteAverage: number | undefined) => {
   object-fit: contain;
 }
 
-/* credits */
 .credits {
   margin-top: 1.5rem;
 }
@@ -442,7 +503,7 @@ const tmdbStars = (voteAverage: number | undefined) => {
   gap: 0.6rem;
 }
 
-/* avatar (iniciais) para editores */
+
 .avatar-initials {
   width: 100%;
   height: 140px;
@@ -460,7 +521,7 @@ const tmdbStars = (voteAverage: number | undefined) => {
   font-size: 1.6rem;
 }
 
-/* fotos para autores */
+
 .person img {
   width: 100%;
   height: 140px;
@@ -468,7 +529,6 @@ const tmdbStars = (voteAverage: number | undefined) => {
   border-radius: 6px;
 }
 
-/* textos */
 .person-info .name {
   font-weight: 700;
   color: #fff;
@@ -479,14 +539,14 @@ const tmdbStars = (voteAverage: number | undefined) => {
   font-size: 0.85rem;
 }
 
-/* reviews */
+
 .reviews { margin-top: 1.5rem; }
 .review { background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
 .review-author { display:flex; gap:0.6rem; align-items:center; margin-bottom:0.6rem; }
 .review-author img { width:36px; height:36px; border-radius:50%; object-fit:cover; }
 .review-content { color: #ddd; white-space: pre-wrap; }
 
-/* avatar initials small */
+
 .avatar-initials.small { height:36px; width:36px; font-size:0.9rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
 
 .details-grid {
@@ -496,7 +556,7 @@ const tmdbStars = (voteAverage: number | undefined) => {
   margin-top: 1.5rem;
 }
 
-/* comments */
+
 .comments-section {
   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
   padding: 1rem;
@@ -534,7 +594,7 @@ const tmdbStars = (voteAverage: number | undefined) => {
 .comment-content { color:#ddd; white-space:pre-wrap; margin-bottom:0.4rem; }
 .comment-actions { display:flex; gap:0.6rem; justify-content:flex-end; }
 
-/* responsive */
+
 @media (max-width: 900px) {
   .hero { min-height: 55vh; padding: 2rem 1rem; }
   .hero-content { flex-direction: column; align-items: center; text-align: center; }
