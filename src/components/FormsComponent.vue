@@ -89,7 +89,8 @@
 
 <script setup lang="ts">
 import router from '@/router';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 
 const isLogin = ref(false);
 const showSuccessPopup = ref(false);
@@ -283,9 +284,17 @@ onMounted(() => {
   checkCurrentCookie();
   console.log('Página de login carregada');
   console.log('Cookies atuais:', document.cookie);
+  // abre já em modo login se query.mode == 'login'
+  const route = useRoute();
+  if (route.query.mode === 'login') {
+    isLogin.value = true;
+  }
+  // observa mudanças na query para atualizar o modo
+  watch(() => route.query.mode, (m) => {
+    isLogin.value = m === 'login';
+  });
 });
 </script>
-
 
 <style scoped>
 .form-wrapper {

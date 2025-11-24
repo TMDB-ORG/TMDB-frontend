@@ -10,9 +10,7 @@ import CantinhoView from '@/views/CantinhoView.vue' // novo
 const routes = [
   { path: '/', name: 'Home', component: Home },
   { path: '/filmes', name: 'Movies', component: MoviesView },
-  { path: '/tv', name: 'TV', component: TvViews },
   { path: '/movie/:movieId', name: 'MovieDetails', component: MovieDetailsView, props: true },
-  { path: '/tv/:tvId', name: 'TvDetails', component: TVDetailsView, props: true },
   { path: '/cadastro', name: 'Register', component: Register },
   { path: '/cantinho', name: 'Cantinho', component: CantinhoView } // rota adicionada
 ];

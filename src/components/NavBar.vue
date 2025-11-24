@@ -7,7 +7,7 @@
     </div>
 
     <div class="nav-right">
-      <router-link to="/login" class="login">Entrar</router-link>
+      <router-link :to="{ path: '/cadastro', query: { mode: 'login' } }" class="login">Entrar</router-link>
       <router-link to="/cadastro" class="btn-create">Criar conta</router-link>
     </div>
   </nav>
