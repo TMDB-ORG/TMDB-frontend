@@ -105,7 +105,7 @@ const tmdbStars = (voteAverage: number | undefined) => {
 };
 
 const isOdiado = computed(() => unlikeStore.isUnliked(props.movieId));
-
+const dislikeCount = computed(() => unlikeStore.getCount(props.movieId));
 const toggleOdiar = async () => {
   try {
     
@@ -176,16 +176,18 @@ onMounted(async () => {
                 </div>
               </div>
             </div>
-            <div class="odiar-wrap">
-              <button
-                class="odiar-btn"
-                :class="{ active: isOdiado }"
-                @click="toggleOdiar"
-                :aria-pressed="isOdiado"
-              >
-                <span class="label">{{ isOdiado ? 'Odiado' : 'Odiar' }}</span>
-              </button>
-            </div>
+             <div class="odiar-wrap">
+          <button
+            class="odiar-btn"
+            :class="{ active: isOdiado }"
+            @click="toggleOdiar"
+            :aria-pressed="isOdiado"
+          >
+            <span class="emoji">{{ isOdiado ? '💔' : '🤍' }}</span>
+            <span class="label">{{ isOdiado ? 'Odiado' : 'Odiar' }}</span>
+            <span class="count">({{ dislikeCount }})</span>
+          </button>
+        </div>
             <p class="overview">{{ movie.overview || 'Sem descrição disponível.' }}</p>
           </div>
         </div>
