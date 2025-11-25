@@ -7,6 +7,7 @@ import MovieDetailsView from '@/views/MovieDetailsView.vue'
 import Register from '@/components/FormsComponent.vue'
 import CantinhoView from '@/views/CantinhoView.vue' 
 import ProfileView from '@/views/ProfileView.vue'
+import Pagemento from '@/views/Pagemento.vue'
 
 const routes = [
   { path: '/', name: 'Home', component: Home },
@@ -15,6 +16,7 @@ const routes = [
   { path: '/cadastro', name: 'Register', component: Register },
   { path: '/cantinho', name: 'Cantinho', component: CantinhoView },
   { path: '/profile/', name: 'Profile', component: ProfileView},
+  { path: '/pagamento', name: 'Payment', component: Pagemento },
 ];
 
 const router = createRouter({

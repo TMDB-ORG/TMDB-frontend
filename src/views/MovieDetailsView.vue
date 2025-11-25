@@ -15,7 +15,7 @@ const props = defineProps({
 const cookieStore = useCookieStore();
 const movieStore = useMovieStore();
 const commentsStore = useCommentsStore();
-const userStore = useUserStore();
+
 const unlikeStore = useUnlikeStore();
 
 const movie = computed(() => movieStore.currentMovie as any);
