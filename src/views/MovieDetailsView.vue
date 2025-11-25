@@ -68,7 +68,6 @@ const loadComments = async () => {
 };
 
 const submitComment = async () => {
-
   if (!newComment.value?.trim()) return;
   isSubmitting.value = true;
   
@@ -77,9 +76,6 @@ const submitComment = async () => {
     newComment.value = '';
     await loadComments();
   } catch (e: any) {
-    console.error('Erro ao enviar comentário', e);
-    
-  
     if (e.message?.includes('Unauthorized') || e.message?.includes('401')) {
       alert('Sua sessão expirou. Faça login novamente para comentar.');
     } else {
@@ -116,6 +112,7 @@ const toggleOdiar = async () => {
 };
 
 onMounted(async () => {
+  await unlikeStore.fetchCount(props.movieId);
   await movieStore.getMovieDetail(props.movieId);
   await loadComments();
 
@@ -128,11 +125,7 @@ onMounted(async () => {
       console.error('Erro ao buscar status de dislike', e);
     }
   }
-  
 
-  console.log('Token presente:', !!cookieStore.getCookie('token'));
-  console.log('UserStore auth:', userStore.auth);
-  console.log('UserStore isAuthenticated:', userStore.isAuthenticated);
 });
 </script>
 
@@ -428,29 +421,126 @@ onMounted(async () => {
 }
 
 
+.odiar-wrap {
+  margin-top: 1rem;
+}
+
 .odiar-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: transparent;
-  border: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
   color: #fff;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
   cursor: pointer;
-  font-weight: 700;
-  transition: transform 0.12s ease, color 0.12s ease;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
-.odiar-btn .emoji { font-size: 1.2rem; transition: transform 0.12s ease; }
-.odiar-btn:hover { transform: translateY(-2px); }
+
+.odiar-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.odiar-btn:active {
+  transform: translateY(0);
+}
+
+.odiar-btn .emoji {
+  font-size: 1.3rem;
+  transition: all 0.3s ease;
+  filter: grayscale(0.3);
+}
+
+.odiar-btn .label {
+  font-weight: 600;
+}
+
+.odiar-btn .count {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  font-weight: 500;
+}
+
 
 .odiar-btn.active {
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.15), rgba(255, 77, 77, 0.1));
+  border-color: rgba(255, 107, 107, 0.4);
   color: #ff6b6b;
 }
-.odiar-btn.active .emoji { transform: translateY(-2px); }
 
-.odiar-wrap {
-  margin-top: 0.6rem;
+.odiar-btn.active:hover {
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(255, 77, 77, 0.15));
+  border-color: rgba(255, 107, 107, 0.6);
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.2);
+}
+
+.odiar-btn.active .emoji {
+  filter: grayscale(0);
+  transform: scale(1.1);
+}
+
+.odiar-btn.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 10px;
+  background: rgba(255, 107, 107, 0.1);
+  animation: pulse 2s infinite;
+  z-index: -1;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+}
+
+.odiar-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.odiar-btn:disabled:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+
+@media (max-width: 768px) {
+  .odiar-btn {
+    padding: 8px 14px;
+    font-size: 0.9rem;
+  }
+  
+  .odiar-btn .emoji {
+    font-size: 1.2rem;
+  }
+  
+  .odiar-btn .count {
+    font-size: 0.8rem;
+  }
 }
 
 

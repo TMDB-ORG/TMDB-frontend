@@ -38,7 +38,7 @@
           <input type="password" id="loginPassword" v-model="loginData.password" />
         </div>
 
-        <!-- Feedback do Cookie/Token -->
+        <!-- Feedback do Cookie/Token 
         <div class="cookie-feedback" :class="cookieStatus">
           <div class="feedback-icon">
             <span v-if="cookieStatus === 'checking'">⏳</span>
@@ -54,6 +54,7 @@
             <small v-if="cookieDetails" class="cookie-details">{{ cookieDetails }}</small>
           </div>
         </div>
+        -->
       </div>
 
       <button type="submit" :disabled="isLogin && isSubmitting">
@@ -64,8 +65,8 @@
         {{ isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?' }}
         <span class="switch-btn" @click="toggleMode">Clique aqui</span>
       </p>
-
-      <!-- Debug Info -->
+      
+      <!---
       <div class="debug-info">
         <h4 @click="toggleDebug" style="cursor: pointer;">Debug Info ▼</h4>
         <div v-if="showDebug">
@@ -76,6 +77,7 @@
           <button type="button" @click="clearCookies" class="debug-btn" style="margin-left: 0.5rem;">Limpar Cookies</button>
         </div>
       </div>
+      -->
     </form>
 
     <div v-if="showSuccessPopup" class="success-popup">
@@ -100,7 +102,7 @@ const cookieStatus = ref<'idle' | 'checking' | 'success' | 'error'>('idle');
 const cookieDetails = ref('');
 const successMessage = ref('');
 const errorMessage = ref('');
-const showDebug = ref(true); // Mantenho true para debug
+const showDebug = ref(false); // Mantenho true para debug
 const debugCookieValue = ref('');
 const lastResponse = ref('');
 
