@@ -3,7 +3,6 @@ import { useGenreStore } from './genre';
 import { defineStore } from 'pinia';
 import api from '@/plugins/axios';
 
-// Minimal TV show shape used by list and templates
 export interface TvShow {
   id: number;
   name: string;
