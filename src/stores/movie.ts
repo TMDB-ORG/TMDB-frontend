@@ -42,15 +42,14 @@ export const useMovieStore = defineStore('movie', () => {
   const setLoading = (value: boolean) => {
     state.isLoading = value;
   };
-  const listBadMovies = async (genreId: number) => {
+  const listBadMovies = async () => {
     state.isLoading = true;
     const response = await api.get('discover/movie', {
       params: {
-        with_genres: genreId || null,
         language: 'pt-BR',
         'vote_average.lte': 3.0,
         'sort_by': 'vote_average.asc',
-        'vote_count.gte': 50
+        'vote_count.gte': 10
       },
     });
     movies.value = response.data.results;
@@ -69,9 +68,12 @@ export const useMovieStore = defineStore('movie', () => {
       params: {
         with_genres: genreId,
         language: 'pt-BR',
+        'vote_average.lte': 3.0,
+        'sort_by': 'vote_average.asc',
+        'vote_count.gte': 10
       },
     });
-    movies.value = response.data.results;
+    return response.data.results;
     setLoading(false);
   };
     

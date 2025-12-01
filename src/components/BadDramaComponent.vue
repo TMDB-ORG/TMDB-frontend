@@ -6,11 +6,12 @@
         &#8249;
       </button>
 
-      <div class="carousel" ref="carouselRef">
+      <div class="carousel" ref="carouselRef" @wheel.prevent @touchmove.prevent>
         <div
           v-for="movie in movies"
           :key="movie.id"
           class="carousel-item"
+          @click="goToDetails(movie.id)"
         >
           <img
             :src="`https://image.tmdb.org/t/p/w500${movie.poster_path}`"
@@ -32,15 +33,23 @@
 
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useMovieStore } from '@/stores/movie';
 import type { Movie } from '@/types/moviesTypes';
+
 const movieStore = useMovieStore();
+const router = useRouter();
 const carouselRef = ref<HTMLElement | null>(null);
 
 const movies = ref<Movie[]>([]);
 
 const loadMovies = async () => {
-  movies.value = await movieStore.listBadMovies(18);
+  movies.value = await movieStore.listMovies(18);
+  console.log(movies.value);
+};
+
+const goToDetails = (id: number) => {
+  router.push({ name: 'MovieDetails', params: { movieId: id } });
 };
 
 const scrollNext = () => {
@@ -96,6 +105,7 @@ h2 {
   align-items: center;
   gap: 1rem;
 }
+
 .carousel {
   display: flex;
   overflow-x: auto;
@@ -104,6 +114,8 @@ h2 {
   scrollbar-width: none;
   -ms-overflow-style: none;
   flex: 1;
+  /* Previne scroll da página quando sobre o carousel */
+  overscroll-behavior: contain;
 }
 
 .carousel::-webkit-scrollbar {
@@ -131,7 +143,6 @@ h2 {
     0 6px 18px rgba(0, 0, 0, 0.6);
 }
 
-
 .carousel-item img {
   width: 100%;
   height: 100%;
@@ -142,6 +153,7 @@ h2 {
 .carousel-item:hover img {
   transform: scale(1.1);
 }
+
 .movie-banner {
   width: 100%;
   height: 100%;
@@ -168,6 +180,7 @@ h2 {
   transform: translateY(10px);
   opacity: 0;
   transition: all 0.3s ease;
+  pointer-events: none;
 }
 
 .carousel-item:hover .movie-overlay {
@@ -212,12 +225,12 @@ h2 {
   -webkit-mask-composite: xor;
   opacity: 0;
   transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .carousel-item:hover::before {
   opacity: 1;
 }
-
 
 .carousel-btn {
   position: absolute;
@@ -252,7 +265,6 @@ h2 {
 .carousel-btn-next {
   right: -25px;
 }
-
 
 @media (max-width: 1400px) {
   .carousel-item {
