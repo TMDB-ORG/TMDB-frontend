@@ -291,6 +291,9 @@ onMounted(async () => {
   background: #02050b;
   color: #fff;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
 .hero {
