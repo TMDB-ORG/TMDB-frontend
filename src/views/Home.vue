@@ -16,5 +16,3 @@ import BadDramaComponent from '@/components/BadDramaComponent.vue';
 
 </script>
 
-<style scoped>
-</style>
