@@ -1,6 +1,6 @@
 import { reactive, computed } from 'vue';
 import { defineStore } from 'pinia';
-import api from '@/plugins/axios';
+
 
 export const useCookieStore = defineStore('cookie', () => {
   
