@@ -40,7 +40,7 @@ const carouselRef = ref<HTMLElement | null>(null);
 const movies = ref<Movie[]>([]);
 
 const loadMovies = async () => {
-  movies.value = await movieStore.listBadMovies(18);
+  movies.value = await movieStore.listMovies(18);
 };
 
 const scrollNext = () => {
