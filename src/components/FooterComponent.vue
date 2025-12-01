@@ -11,7 +11,6 @@
         <h4>Links Rápidos</h4>
         <ul>
           <li><a href="/" class="footer-link">Início</a></li>
-          <li><a href="/filmes" class="footer-link">Filmes</a></li>
           <li><a href="/cantinho" class="footer-link">Cantinho da Vergonha</a></li>
         </ul>
       </div>
