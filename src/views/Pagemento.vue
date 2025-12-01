@@ -1,7 +1,7 @@
 <template>
   <div class="payment-container">
     <div class="payment-card">
-      <!-- Header -->
+
       <div class="payment-header">
         <div class="logo">
           <span class="logo-text">STRIPE</span>
@@ -10,7 +10,6 @@
         <p class="subtitle">Complete sua transação com segurança</p>
       </div>
 
-      <!-- Product Info -->
       <div class="product-info">
         <div class="product-details">
           <h3 class="product-name">Produto Premium</h3>
@@ -23,7 +22,7 @@
 
      
       <div class="payment-form">
-        <!-- Card Element -->
+
         <div class="form-group">
           <label class="form-label">Informações do Cartão</label>
           <div id="card-element" ref="cardElement" class="card-element"></div>
@@ -74,7 +73,6 @@
         </div>
       </div>
 
-      <!-- Footer -->
       <div class="payment-footer">
         <p class="footer-text">
           Sua informação está protegida com criptografia de ponta a ponta
@@ -82,7 +80,6 @@
       </div>
     </div>
 
-    <!-- Success Modal -->
     <div v-if="showSuccess" class="modal-overlay" @click="closeModal">
       <div class="success-modal" @click.stop>
         <div class="success-icon">

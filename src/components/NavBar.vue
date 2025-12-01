@@ -2,7 +2,7 @@
   <nav class="navbar">
     <div class="nav-left">
       <router-link to="/" class="nav-item">Início</router-link>
-      <router-link to="/filmes" class="nav-item">Filmes</router-link>
+      <router-link to="/profile" class="nav-item">Conta</router-link>
       <router-link to="/cantinho" class="nav-item shame">Cantinho da Vergonha</router-link>
     </div>
 
@@ -29,20 +29,18 @@
   padding: 0 20px;
   gap: 12px;
   z-index: 1000;
-  background-color: rgba(2,5,11,0.45); /* mais transparente */
+  background-color: rgba(2,5,11,0.45); 
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   box-shadow: 0 6px 18px rgba(0,0,0,0.18);
 }
 
-/* left group (Início / Filmes / Cantinho) */
 .nav-left {
   display: flex;
   align-items: center;
   gap: 18px;
 }
 
-/* common nav items */
 .nav-item {
   color: #fff;
   text-decoration: none;
@@ -52,10 +50,9 @@
   transition: background-color 0.12s;
 }
 .nav-item:hover {
-  background-color: rgba(255,255,255,0.06); /* clareia levemente */
+  background-color: rgba(255,255,255,0.06); 
 }
 
-/* destaque sutil para 'Cantinho da Vergonha' */
 .shame {
   font-weight: 600;
   color: #ffd166;
@@ -63,14 +60,14 @@
   padding: 6px 10px;
 }
 
-/* right group (Entrar + Criar conta) */
+
 .nav-right {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-/* Entrar - simples link */
+
 .login {
   color: #fff;
   text-decoration: none;
@@ -81,10 +78,10 @@
   background-color: rgba(255,255,255,0.06);
 }
 
-/* Criar conta - botão dourado seguindo a paleta */
+
 .btn-create {
   display: inline-block;
-  background: #ffd166; /* cor dourada da paleta */
+  background: #ffd166; 
   color: #02050B;
   padding: 8px 14px;
   border-radius: 8px;
@@ -95,10 +92,10 @@
   transition: filter 0.12s, background-color 0.12s;
 }
 .btn-create:hover {
-  filter: brightness(1.05); /* clareia levemente */
+  filter: brightness(1.05); 
 }
 
-/* espaço para o conteúdo não ficar atrás da navbar fixa */
+
 :root { --navbar-height: 64px; }
 body > #app { padding-top: var(--navbar-height); }
 
