@@ -1,6 +1,6 @@
 <template>
   <div class="cantinho-container">
-    <!-- Header Hero Section -->
+
     <section class="hero-section">
       <div class="hero-content">
         <h1 class="hero-title">Cantinho da Vergonha</h1>
@@ -9,16 +9,14 @@
       </div>
     </section>
 
-    <!-- Loading -->
     <div v-if="movieStore.isLoading" class="loading">
       <p>Carregando filmes mais odiados...</p>
     </div>
 
-    <!-- Top 3 Piores Filmes -->
     <section v-else class="shame-section">
       <div class="container">
         <div class="movies-list">
-          <!-- 1º Lugar -->
+   
           <div v-if="worstMovies[0]" class="movie-card first-place" @click="openMovie(worstMovies[0].id)">
             <div class="trophy">🥇</div>
             <div class="rank-badge">#1 Mais Odiado</div>
@@ -47,7 +45,6 @@
             </div>
           </div>
 
-          <!-- 2º Lugar -->
           <div v-if="worstMovies[1]" class="movie-card second-place" @click="openMovie(worstMovies[1].id)">
             <div class="trophy">🥈</div>
             <div class="rank-badge">#2 Mais Odiado</div>
@@ -76,7 +73,6 @@
             </div>
           </div>
 
-          <!-- 3º Lugar -->
           <div v-if="worstMovies[2]" class="movie-card third-place" @click="openMovie(worstMovies[2].id)">
             <div class="trophy">🥉</div>
             <div class="rank-badge">#3 Mais Odiado</div>
@@ -105,7 +101,6 @@
             </div>
           </div>
 
-          <!-- Mensagem se não houver filmes -->
           <div v-if="worstMovies.length === 0" class="no-movies">
             <p>Nenhum filme ruim encontrado. Tente buscar em outros gêneros.</p>
           </div>
@@ -118,41 +113,93 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import axios from 'axios';
+import api from '@/plugins/axios';
 import { useMovieStore } from '@/stores/movie';
-import { useGenreStore } from '@/stores/genre';
 
-const router = useRouter();
 const movieStore = useMovieStore();
-const genreStore = useGenreStore();
+const router = useRouter();
+
+const BACKEND_URL = "http://localhost:8080"; 
 
 const worstMovies = ref<any[]>([]);
+const isLoading = ref(true);
+
+const getMovieDetailsFromTMDB = async (movieId: number) => {
+  try {
+    const response = await api.get(`movie/${movieId}`, {
+      params: { language: "pt-BR" }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao buscar filme no TMDB:", error);
+    return null;
+  }
+};
+
+const loadWorstMovies = async () => {
+  try {
+    isLoading.value = true;
+
+    const response = await axios.get(`${BACKEND_URL}/dislikes/top3`);
+    const dislikedMovies = response.data;
+    const fullData = [];
+
+    for (const movie of dislikedMovies) {
+      const tmdbData = await getMovieDetailsFromTMDB(movie.movieId);
+
+      if (tmdbData) {
+        fullData.push({
+          id: tmdbData.id,
+          title: tmdbData.title,
+          poster_path: tmdbData.poster_path,
+          release_date: tmdbData.release_date,
+          genre_ids: tmdbData.genres.map((g: any) => g.id),
+          vote_average: tmdbData.vote_average,
+          description: tmdbData.overview,
+          dislikes: movie.count
+        });
+      }
+    }
+
+    worstMovies.value = fullData;
+
+  } catch (error) {
+    console.error("Erro ao carregar filmes mais odiados:", error);
+    worstMovies.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+};
 
 const getGenreName = (genreId: number) => {
-  return genreStore.getGenreName(genreId) || 'Desconhecido';
+  const genres: any = {
+    28: "Ação",
+    12: "Aventura",
+    16: "Animação",
+    35: "Comédia",
+    80: "Crime",
+    18: "Drama",
+    27: "Terror",
+    53: "Suspense",
+    10749: "Romance",
+    14: "Fantasia",
+    878: "Ficção Científica"
+  };
+
+  return genres[genreId] || "Desconhecido";
 };
 
 const openMovie = (movieId: number) => {
   router.push({ name: 'MovieDetails', params: { movieId } });
 };
 
-const loadWorstMovies = async () => {
-  try {
-    movieStore.setLoading(true);
-    const badMovies = await movieStore.listBadMovies(0);
-    worstMovies.value = badMovies.slice(0, 3);
-  } catch (error) {
-    console.error('Erro ao carregar filmes ruins:', error);
-    worstMovies.value = [];
-  } finally {
-    movieStore.setLoading(false);
-  }
-};
-
-onMounted(async () => {
-  await genreStore.getAllGenres('movie');
-  await loadWorstMovies();
+onMounted(() => {
+  loadWorstMovies();
 });
 </script>
+
+
 
 <style scoped>
 .cantinho-container {

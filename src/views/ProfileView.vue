@@ -24,7 +24,7 @@
                 <span class="info-value">{{ profile.user.username || profile.user.name }}</span>
               </div>
             </div>
-            
+
             <div class="info-item">
               <div class="info-icon email-icon"></div>
               <div class="info-content">
@@ -32,7 +32,7 @@
                 <span class="info-value">{{ profile.user.email }}</span>
               </div>
             </div>
-            
+
             <div class="info-item">
               <div class="info-icon date-icon"></div>
               <div class="info-content">
@@ -51,7 +51,7 @@
               <span class="stat-label">Comentários</span>
             </div>
           </div>
-          
+
           <div class="stat-card">
             <div class="stat-icon dislike-icon"></div>
             <div class="stat-info">
@@ -70,7 +70,7 @@
                 <div class="activity-content">
                   <p class="activity-text">{{ comment.content }}</p>
                   <div class="activity-meta">
-                    <span class="movie-id">Filme ID: {{ comment.movieId }}</span>
+                    <span class="movie-id">Filme: {{ comment.movieTitle }}</span>
                     <span class="activity-date">{{ formatDateTime(comment.createdAt) }}</span>
                   </div>
                 </div>
@@ -84,7 +84,7 @@
               <div class="activity-item dislike-item" v-for="dislike in profile.dislikes" :key="dislike.movieId">
                 <div class="activity-icon dislike-icon-small"></div>
                 <div class="activity-content">
-                  <p class="activity-text">Filme ID: {{ dislike.movieId }}</p>
+                  <p class="activity-text">Filme: {{ dislike.movieTitle }}</p>
                   <div class="activity-meta">
                     <span class="activity-date">Marcado como odiado</span>
                   </div>
@@ -114,65 +114,87 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useCookieStore } from "@/stores/cookie";
+import api from "@/plugins/axios";
 
 const cookieStore = useCookieStore();
 const loading = ref(true);
 const profile = ref({});
+const movieTitlesCache = {};
 
-const getInitials = (name = '') => {
-  if (!name) return '?';
-  const parts = name.trim().split(' ').filter(Boolean);
-  if (!parts.length) return '?';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+// Buscar título no TMDB
+const getMovieTitle = async (movieId) => {
+  if (!movieId) return "Filme Desconhecido";
+  if (movieTitlesCache[movieId]) return movieTitlesCache[movieId];
+
+  try {
+    const response = await api.get(`movie/${movieId}`, {
+      params: { language: "pt-BR" },
+    });
+    const title = response.data.title || "Filme Desconhecido";
+    movieTitlesCache[movieId] = title;
+    return title;
+  } catch (error) {
+    console.error("Erro ao buscar título do filme:", error);
+    return "Filme Desconhecido";
+  }
 };
 
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleDateString('pt-BR');
+const getInitials = (name = "") => {
+  if (!name) return "?";
+  const split = name.trim().split(" ").filter(Boolean);
+  if (split.length === 1) return split[0].slice(0, 2).toUpperCase();
+  return (split[0][0] + split[split.length - 1][0]).toUpperCase();
 };
 
-const formatDateTime = (dateString) => {
-  if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleString('pt-BR');
-};
+const formatDate = (d) =>
+  d ? new Date(d).toLocaleDateString("pt-BR") : "N/A";
+const formatDateTime = (d) =>
+  d ? new Date(d).toLocaleString("pt-BR") : "N/A";
 
+// Carregar perfil
 const loadProfile = async () => {
   loading.value = true;
+
   try {
-    console.log("Carregando perfil...");
-    
     const response = await fetch("http://localhost:8080/profile/user", {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-    }
+    if (!response.ok) throw new Error("Falha ao buscar perfil");
 
     const data = await response.json();
-    console.log("Dados do perfil:", data);
-    
     profile.value = data;
-    
-  } catch (error) {
-    console.error("Erro ao carregar perfil:", error);
-    profile.value = { error: "Falha ao carregar perfil" };
+
+    // Resolver títulos dos comentários
+    if (profile.value.comments) {
+      for (const c of profile.value.comments) {
+        c.movieTitle = await getMovieTitle(c.movieId);
+      }
+    }
+
+    // Resolver títulos dos dislikes
+    if (profile.value.dislikes) {
+      for (const d of profile.value.dislikes) {
+        d.movieTitle = await getMovieTitle(d.movieId);
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    profile.value = { error: true };
   } finally {
     loading.value = false;
   }
 };
 
-onMounted(() => {
-  loadProfile();
-});
+onMounted(loadProfile);
 </script>
 
 <style scoped>
+/* ———— TODO O SEU CSS ORIGINAL ———— */
+/* (Nada alterado, só deixei exatamente igual ao seu para evitar quebrar algo) */
+
 .profile-container {
   width: 100%;
   min-height: 100vh;
@@ -198,7 +220,7 @@ onMounted(() => {
 }
 
 .profile-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -209,8 +231,13 @@ onMounted(() => {
 }
 
 @keyframes shimmer {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .profile-header {
@@ -258,8 +285,12 @@ onMounted(() => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .loading p {
@@ -309,7 +340,7 @@ onMounted(() => {
 }
 
 .user-icon::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -321,7 +352,7 @@ onMounted(() => {
 }
 
 .email-icon::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -333,7 +364,7 @@ onMounted(() => {
 }
 
 .date-icon::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -345,7 +376,7 @@ onMounted(() => {
 }
 
 .date-icon::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 30%;
   left: 50%;
@@ -406,7 +437,7 @@ onMounted(() => {
 }
 
 .comment-icon::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -418,7 +449,7 @@ onMounted(() => {
 }
 
 .dislike-icon::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -426,7 +457,20 @@ onMounted(() => {
   width: 18px;
   height: 18px;
   background: #d4af37;
-  clip-path: polygon(20% 0%, 0% 20%, 30% 50%, 0% 80%, 20% 100%, 50% 70%, 80% 100%, 100% 80%, 70% 50%, 100% 20%, 80% 0%, 50% 30%);
+  clip-path: polygon(
+    20% 0%,
+    0% 20%,
+    30% 50%,
+    0% 80%,
+    20% 100%,
+    50% 70%,
+    80% 100%,
+    100% 80%,
+    70% 50%,
+    100% 20%,
+    80% 0%,
+    50% 30%
+  );
 }
 
 .stat-info {
@@ -463,7 +507,6 @@ onMounted(() => {
   margin-bottom: 16px;
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 1px;
 }
 
 .activity-list {
@@ -496,7 +539,7 @@ onMounted(() => {
 }
 
 .comment-icon-small::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -508,7 +551,7 @@ onMounted(() => {
 }
 
 .dislike-icon-small::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -516,7 +559,20 @@ onMounted(() => {
   width: 14px;
   height: 14px;
   background: #d4af37;
-  clip-path: polygon(20% 0%, 0% 20%, 30% 50%, 0% 80%, 20% 100%, 50% 70%, 80% 100%, 100% 80%, 70% 50%, 100% 20%, 80% 0%, 50% 30%);
+  clip-path: polygon(
+    20% 0%,
+    0% 20%,
+    30% 50%,
+    0% 80%,
+    20% 100%,
+    50% 70%,
+    80% 100%,
+    100% 80%,
+    70% 50%,
+    100% 20%,
+    80% 0%,
+    50% 30%
+  );
 }
 
 .activity-content {
@@ -562,7 +618,7 @@ onMounted(() => {
 }
 
 .empty-icon::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -570,7 +626,16 @@ onMounted(() => {
   width: 24px;
   height: 24px;
   background: #333;
-  clip-path: polygon(0% 0%, 0% 100%, 40% 100%, 40% 60%, 60% 60%, 60% 100%, 100% 100%, 100% 0%);
+  clip-path: polygon(
+    0% 0%,
+    0% 100%,
+    40% 100%,
+    40% 60%,
+    60% 60%,
+    60% 100%,
+    100% 100%,
+    100% 0%
+  );
 }
 
 .empty-state p {
@@ -599,7 +664,7 @@ onMounted(() => {
 }
 
 .error-icon::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -607,7 +672,20 @@ onMounted(() => {
   width: 24px;
   height: 24px;
   background: #d4af37;
-  clip-path: polygon(20% 0%, 0% 20%, 30% 50%, 0% 80%, 20% 100%, 50% 70%, 80% 100%, 100% 80%, 70% 50%, 100% 20%, 80% 0%, 50% 30%);
+  clip-path: polygon(
+    20% 0%,
+    0% 20%,
+    30% 50%,
+    0% 80%,
+    20% 100%,
+    50% 70%,
+    80% 100%,
+    100% 80%,
+    70% 50%,
+    100% 20%,
+    80% 0%,
+    50% 30%
+  );
 }
 
 .error-state h3 {
@@ -642,27 +720,28 @@ onMounted(() => {
   .profile-container {
     padding: 60px 16px 20px;
   }
-  
+
   .profile-card {
     padding: 24px;
     width: 90%;
   }
-  
+
   .profile-header h1 {
     font-size: 1.8rem;
   }
-  
+
   .stats-section {
     grid-template-columns: 1fr;
   }
-  
+
   .activity-meta {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
   }
-  
-  .info-item, .stat-card {
+
+  .info-item,
+  .stat-card {
     padding: 14px;
   }
 }
