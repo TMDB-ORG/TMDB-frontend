@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useCookieStore } from './cookie';
 
+
 export const useUnlikeStore = defineStore("unlikeStore", () => {
   const statusByMovie = ref<Record<number, string>>({});
   const countByMovie = ref<Record<number, number>>({});
@@ -36,43 +37,30 @@ export const useUnlikeStore = defineStore("unlikeStore", () => {
   };
 
   const toggleUnlike = async (movieId: number) => {
-    try {
-      const current = statusByMovie.value[movieId] || "NONE";
-      
-      if (current === "DISLIKED") {
-        // Remover dislike
-        const response = await fetch(`http://localhost:8080/dislikes/removeDislike?movieId=${movieId}`, {
-          method: "POST",
-          credentials: 'include'
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          statusByMovie.value[movieId] = "NONE";
-          countByMovie.value[movieId] = data.count || 0;
-        }
-      } else {
-        // Adicionar dislike
-        const response = await fetch(`http://localhost:8080/dislikes/dislikeMovie?movieId=${movieId}`, {
-          method: "POST",
-          credentials: 'include'
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          statusByMovie.value[movieId] = "DISLIKED";
-          countByMovie.value[movieId] = data.count || 0;
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao alternar dislike:', error);
-    }
-  };
+  try {
+    const response = await fetch(`http://localhost:8080/dislikes/toggle?movieId=${movieId}`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+    
+    statusByMovie.value[movieId] = data.newStatus;
+    
+    const countRes = await fetch(`http://localhost:8080/dislikes/count?movieId=${movieId}`);
+    const countData = await countRes.json();
+    countByMovie.value[movieId] = countData.count || 0;
+
+  } catch (error) {
+    console.error("Erro ao alternar dislike:", error);
+  }
+};
 
   const isUnliked = (movieId: number) =>
     statusByMovie.value[movieId] === "DISLIKED";
 
   const getCount = (movieId: number) => countByMovie.value[movieId] || 0;
+
 
   return { 
     statusByMovie, 
@@ -81,6 +69,6 @@ export const useUnlikeStore = defineStore("unlikeStore", () => {
     fetchCount,
     toggleUnlike, 
     isUnliked,
-    getCount
+    getCount,
   };
 });
